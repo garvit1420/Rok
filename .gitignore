@@ -1,0 +1,9 @@
+node_modules/
+client/dist/
+server/placement.db
+server/placement.db-shm
+server/placement.db-wal
+server/uploads/*
+!server/uploads/.gitkeep
+.env
+*.traineddata
