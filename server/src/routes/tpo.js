@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import db from '../db.js';
 import { auth } from '../auth.js';
 import { notify } from '../utils/notify.js';
+import { sendInvitationEmail } from '../utils/mail.js';
 import { ruleScore } from '../utils/score.js';
 const r = Router();
 r.use(auth('tpo'));
@@ -12,18 +13,29 @@ r.use(auth('tpo'));
 r.get('/companies', (req, res) => {
   res.json(db.prepare('SELECT c.*, u.email FROM companies c JOIN users u ON u.id=c.user_id ORDER BY c.id DESC').all());
 });
-r.post('/companies/invite', (req, res) => {
+r.post('/companies/invite', async (req, res) => {
   const { name, email, hr_name, message } = req.body;
   if (!name || !email) return res.status(400).json({ error: 'Company name and email required' });
   if (db.prepare('SELECT 1 FROM users WHERE email=?').get(email.toLowerCase())) return res.status(409).json({ error: 'Email already exists' });
   const temp = crypto.randomBytes(4).toString('hex');
+  let companyId;
   db.transaction(() => {
     const u = db.prepare('INSERT INTO users(email,password_hash,role,name) VALUES(?,?,?,?)').run(email.toLowerCase(), bcrypt.hashSync(temp, 10), 'company', name);
-    db.prepare('INSERT INTO companies(user_id,name,hr_name,invitation_message) VALUES(?,?,?,?)').run(u.lastInsertRowid, name, hr_name || null, message || null);
+    companyId = Number(db.prepare('INSERT INTO companies(user_id,name,hr_name,invitation_message) VALUES(?,?,?,?)').run(u.lastInsertRowid, name, hr_name || null, message || null).lastInsertRowid);
     notify(u.lastInsertRowid, 'Placement invitation', message || 'You are invited to participate in campus placements. Please accept or decline.');
   })();
-  // Temporary password is shown once to the TPO (no email server in this build)
-  res.json({ ok: true, email: email.toLowerCase(), temp_password: temp });
+  // Email the HR contact (free SMTP, optional). The temporary password is also shown once to the TPO as a fallback.
+  const mail = await sendInvitationEmail({ to: email.toLowerCase(), company: name, companyId, hrName: hr_name, message });
+  // Password is only shown to the TPO when the email could not be sent (otherwise it is emailed after the company accepts)
+  res.json({ ok: true, email: email.toLowerCase(), temp_password: mail.sent ? null : temp, email_sent: mail.sent, email_error: mail.reason || null });
+});
+
+// Delete a company with its login, drives and their applications (cascade)
+r.delete('/companies/:id', (req, res) => {
+  const c = db.prepare('SELECT * FROM companies WHERE id=?').get(req.params.id);
+  if (!c) return res.status(404).json({ error: 'Company not found' });
+  db.prepare('DELETE FROM users WHERE id=?').run(c.user_id);
+  res.json({ ok: true });
 });
 
 // ---- Drives

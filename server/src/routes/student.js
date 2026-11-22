@@ -77,6 +77,31 @@ r.post('/marksheet', upload.single('file'), async (req, res) => {
   res.json({ id: Number(info.lastInsertRowid), ocr_status: ocr.status, extracted_cgpa: ocr.cgpa, extracted_backlogs: ocr.backlogs, extracted_dead_backlogs: ocr.deadBacklogs, subjects: ocr.subjects });
 });
 
+const removeFile = name => { if (name) fs.unlink(path.join(UPLOADS, path.basename(name)), () => {}); };
+
+// Remove an uploaded marksheet (also deletes the file)
+r.delete('/marksheet/:id', (req, res) => {
+  const s = me(req);
+  const m = db.prepare('SELECT * FROM marksheets WHERE id=? AND student_id=?').get(req.params.id, s.id);
+  if (!m) return res.status(404).json({ error: 'Marksheet not found' });
+  db.prepare('DELETE FROM marksheets WHERE id=?').run(m.id);
+  removeFile(m.file_path);
+  if (s.verification_status === 'verified') {
+    db.prepare("UPDATE students SET verification_status='reverify_requested', updated_at=CURRENT_TIMESTAMP WHERE id=?").run(s.id);
+    db.prepare('INSERT INTO verification_history(student_id,action,note) VALUES(?,?,?)').run(s.id, 'reverify_requested', 'Marksheet removed by student');
+    notifyRole('tpo', 'Marksheet removed', `${req.user.name} removed a marksheet and needs re-verification.`);
+  }
+  res.json({ ok: true });
+});
+
+// Remove the current resume
+r.delete('/resume', (req, res) => {
+  const s = me(req);
+  db.prepare('UPDATE students SET resume_path=NULL, resume_text=NULL, updated_at=CURRENT_TIMESTAMP WHERE id=?').run(s.id);
+  removeFile(s.resume_path);
+  res.json({ ok: true });
+});
+
 // ---- Drives with eligibility
 r.get('/drives', (req, res) => {
   const s = me(req);

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 // ---------- Toasts
 const ToastCtx = createContext(() => {});
@@ -126,3 +126,28 @@ export function useLoad(fn, deps = []) {
 
 export const fmtDate = d => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
 export const fmtDateTime = d => (d ? new Date(d.replace(' ', 'T') + 'Z').toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '');
+
+// ---------- Dropdown that always opens downward (native <select> may open upward near the screen bottom)
+export function Dropdown({ value, onChange, options }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const close = e => { if (!ref.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+  return (
+    <div className="relative" ref={ref}>
+      <button type="button" className="input flex items-center justify-between text-left" onClick={() => setOpen(o => !o)} onKeyDown={e => e.key === 'Escape' && setOpen(false)}>
+        <span>{value}</span><span className="text-xs text-slate-500">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <ul className="absolute left-0 right-0 top-full z-30 mt-1 max-h-60 overflow-y-auto rounded-lg border border-slate-300 bg-white py-1 text-sm shadow-lg dark:border-slate-700 dark:bg-slate-800">
+          {options.map(o => (
+            <li key={o}><button type="button" className={`block w-full px-3 py-1.5 text-left hover:bg-brand-500 hover:text-white ${o === value ? 'bg-slate-100 font-medium dark:bg-slate-700' : ''}`} onClick={() => { onChange(o); setOpen(false); }}>{o}</button></li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

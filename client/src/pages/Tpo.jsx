@@ -65,13 +65,17 @@ export function TpoCompanies() {
     } catch (x) { toast(errMsg(x), 'err'); } finally { setBusy(false); }
   };
   const close = () => { setOpen(false); setCreated(null); };
+  const del = async c => {
+    if (!confirm(`Delete "${c.name}"? This also deletes its login, drives and all applications to those drives. This cannot be undone.`)) return;
+    try { await api.delete(`/tpo/companies/${c.id}`); toast('Company deleted'); reload(); } catch (x) { toast(errMsg(x), 'err'); }
+  };
   if (loading) return <Spinner />;
   return (
     <>
       <PageHeader title="Companies" subtitle="Send placement invitations and track responses">
         <button className="btn-primary" onClick={() => setOpen(true)}>+ Invite company</button>
       </PageHeader>
-      <Table head={['Company', 'HR contact', 'Email', 'Invitation', 'Invited on']} empty={rows.length === 0 && 'No companies invited yet'}>
+      <Table head={['Company', 'HR contact', 'Email', 'Invitation', 'Invited on', '']} empty={rows.length === 0 && 'No companies invited yet'}>
         {rows.map(c => (
           <tr key={c.id}>
             <td className="td font-medium">{c.name}</td>
@@ -79,14 +83,20 @@ export function TpoCompanies() {
             <td className="td">{c.email}</td>
             <td className="td"><StatusBadge status={c.invitation_status} /></td>
             <td className="td">{fmtDate(c.created_at)}</td>
+            <td className="td text-right"><button className="text-red-600 hover:underline" onClick={() => del(c)}>Delete</button></td>
           </tr>
         ))}
       </Table>
       <Modal open={open} onClose={close} title={created ? 'Invitation sent' : 'Invite a company'}>
         {created ? (
           <div className="space-y-3 text-sm">
-            <p>The company has been notified. Share these login details with them (shown only once):</p>
-            <div className="rounded-lg bg-slate-100 p-3 font-mono text-sm dark:bg-slate-800">Email: {created.email}<br />Temporary password: {created.temp_password}</div>
+            {created.email_sent
+              ? <p className="rounded-lg bg-emerald-50 p-2 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">✓ Invitation email sent to {created.email}. When the company replies ACCEPT (or clicks Accept), their login details are emailed to them automatically.</p>
+              : <p className="rounded-lg bg-amber-50 p-2 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Email was not sent ({created.email_error || 'unknown reason'}). Share the login details below manually.</p>}
+            {created.temp_password && <>
+              <p>Login details for the company (shown only once):</p>
+              <div className="rounded-lg bg-slate-100 p-3 font-mono text-sm dark:bg-slate-800">Email: {created.email}<br />Temporary password: {created.temp_password}</div>
+            </>}
             <button className="btn-primary w-full" onClick={close}>Done</button>
           </div>
         ) : (

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import api, { errMsg, fileUrl } from '../api';
-import { Badge, Empty, Field, fmtDate, Modal, PageHeader, ScoreBar, ScoreChip, Spinner, Stat, StatusBadge, Table, useLoad, useToast } from '../components/ui';
+import { Badge, Dropdown, Empty, Field, fmtDate, Modal, PageHeader, ScoreBar, ScoreChip, Spinner, Stat, StatusBadge, Table, useLoad, useToast } from '../components/ui';
 import { BRANCHES } from './Register';
 
 /* ================= Dashboard ================= */
@@ -63,6 +63,10 @@ export function StudentProfile() {
       reload();
     } catch (x) { toast(errMsg(x), 'err'); } finally { setBusy(''); }
   };
+  const remove = async (url, msg) => {
+    if (!confirm(msg)) return;
+    try { await api.delete(url); toast('Removed'); setOcr(null); reload(); } catch (x) { toast(errMsg(x), 'err'); }
+  };
   return (
     <>
       <PageHeader title="My profile" subtitle="Reusable across all placement drives"><StatusBadge status={p.verification_status} /></PageHeader>
@@ -75,7 +79,7 @@ export function StudentProfile() {
             <Field label="Email"><input className="input" value={p.email} disabled /></Field>
             <Field label="Roll number"><input className="input" value={v.roll_no} onChange={set('roll_no')} /></Field>
             <Field label="Phone"><input className="input" value={v.phone} onChange={set('phone')} /></Field>
-            <Field label="Branch"><select className="input" value={v.branch} onChange={set('branch')}>{BRANCHES.map(b => <option key={b}>{b}</option>)}</select></Field>
+            <Field label="Branch"><Dropdown value={v.branch} onChange={b => setF({ ...v, branch: b })} options={BRANCHES} /></Field>
             <Field label="CGPA (out of 10)"><input className="input" type="number" step="0.01" min="0" max="10" value={v.cgpa} onChange={set('cgpa')} /></Field>
             <Field label="Active backlogs"><input className="input" type="number" min="0" value={v.backlogs} onChange={set('backlogs')} /></Field>
             <Field label="Dead backlogs (cleared)"><input className="input" type="number" min="0" value={v.dead_backlogs} onChange={set('dead_backlogs')} /></Field>
@@ -93,13 +97,13 @@ export function StudentProfile() {
           <div className="card p-4">
             <h2 className="mb-2 text-sm font-semibold">Resume</h2>
             {p.resume_path && !p.has_resume_text && <div className="mb-1 text-xs text-amber-600">Could not read text from this resume (scanned/unsupported). Add your skills above for a better score.</div>}
-            {p.resume_path && <a className="mb-2 block text-sm text-brand-600" href={fileUrl(p.resume_path)} target="_blank" rel="noreferrer">View current resume ↗</a>}
-            <input type="file" accept=".pdf,.png,.jpg,.jpeg" className="text-sm" disabled={busy === 'resume'} onChange={e => upload('resume', e.target.files[0])} />
+            {p.resume_path && <div className="mb-2 flex items-center justify-between text-sm"><a className="text-brand-600" href={fileUrl(p.resume_path)} target="_blank" rel="noreferrer">View current resume ↗</a><button type="button" className="text-red-600" onClick={() => remove('/student/resume', 'Remove your resume?')}>Remove</button></div>}
+            <input type="file" accept=".pdf,.png,.jpg,.jpeg" className="text-sm" disabled={busy === 'resume'} onChange={e => { upload('resume', e.target.files[0]); e.target.value = ''; }} />
           </div>
           <div className="card p-4">
             <h2 className="mb-2 text-sm font-semibold">Upload marksheet (OCR)</h2>
             <Field label="Semester / exam"><input className="input mb-2" placeholder="e.g. Semester 5" value={sem} onChange={e => setSem(e.target.value)} /></Field>
-            <input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" className="text-sm" disabled={busy === 'marksheet'} onChange={e => upload('marksheet', e.target.files[0])} />
+            <input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" className="text-sm" disabled={busy === 'marksheet'} onChange={e => { upload('marksheet', e.target.files[0]); e.target.value = ''; }} />
             {busy === 'marksheet' && <div className="mt-2 text-xs text-slate-500">Scanning with OCR… this can take a few seconds.</div>}
             <p className="mt-2 text-xs text-slate-500">Images (JPG/PNG) are scanned automatically. PDFs are stored for manual TPO review.</p>
             {ocr && (
@@ -122,7 +126,10 @@ export function StudentProfile() {
             {p.marksheets.length === 0 ? <div className="text-sm text-slate-500">None yet</div> : p.marksheets.map(m => (
               <div key={m.id} className="flex items-center justify-between border-b border-slate-100 py-1.5 text-sm last:border-0 dark:border-slate-800">
                 <span>{m.semester || 'Marksheet'} <span className="text-xs text-slate-500">{m.extracted_cgpa != null ? `· CGPA ${m.extracted_cgpa}` : ''}{m.subject_marks ? ` · ${JSON.parse(m.subject_marks).length} subjects` : ''}</span></span>
-                <a className="text-brand-600" href={fileUrl(m.file_path)} target="_blank" rel="noreferrer">Open ↗</a>
+                <span className="flex gap-3">
+                  <a className="text-brand-600" href={fileUrl(m.file_path)} target="_blank" rel="noreferrer">Open ↗</a>
+                  <button type="button" className="text-red-600" onClick={() => remove(`/student/marksheet/${m.id}`, 'Remove this marksheet?')}>Remove</button>
+                </span>
               </div>
             ))}
           </div>

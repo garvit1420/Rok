@@ -30,6 +30,13 @@ export function CompanyDashboard() {
           </div>
         </div>
       )}
+      {c.invitation_status === 'accepted' && !(c.hr_name && c.phone && c.about) && (
+        <div className="card mb-6 border-brand-300 bg-brand-50 p-5 dark:border-brand-700 dark:bg-brand-900/20">
+          <h2 className="font-semibold">Complete your company details</h2>
+          <p className="mt-1 text-sm">Add your HR contact, phone and a short description so the TPO and students know who you are.</p>
+          <Link to="/company/profile" className="btn-primary mt-3">Fill in details →</Link>
+        </div>
+      )}
       {c.invitation_status === 'declined' && (
         <div className="card mb-6 p-4 text-sm">You declined the invitation. <button className="font-medium text-brand-600" onClick={() => respond('accepted')}>Accept instead</button></div>
       )}

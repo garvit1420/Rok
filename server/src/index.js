@@ -7,6 +7,8 @@ import authRoutes from './routes/auth.js';
 import tpoRoutes from './routes/tpo.js';
 import companyRoutes from './routes/company.js';
 import studentRoutes from './routes/student.js';
+import inviteRoutes from './routes/invite.js';
+import { startInboxWatcher } from './utils/inbox.js';
 import { auth } from './auth.js';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
@@ -14,11 +16,13 @@ const UPLOADS = process.env.UPLOAD_DIR || path.join(dir, '..', 'uploads');
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/tpo', tpoRoutes);
 app.use('/api/company', companyRoutes);
 app.use('/api/student', studentRoutes);
+app.use('/api/invite', inviteRoutes);
 
 // Uploaded documents: any logged-in user may fetch via ?token= (used by links/img tags)
 app.get('/api/files/:name', (req, res, next) => {
@@ -39,4 +43,4 @@ if (fs.existsSync(dist)) {
 
 app.use((err, req, res, next) => { console.error(err); res.status(500).json({ error: 'Server error' }); });
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`));
+app.listen(PORT, () => { console.log(`API running on http://localhost:${PORT}`); startInboxWatcher(); });

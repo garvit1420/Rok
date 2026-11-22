@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { errMsg } from '../api';
-import { Field } from '../components/ui';
+import { Dropdown, Field } from '../components/ui';
 import { Shell } from './Login';
 
-export const BRANCHES = ['CSE', 'IT', 'ECE', 'EE', 'ME', 'CE', 'CHE'];
+export const BRANCHES = ['CSE', 'IT', 'ECE', 'EE', 'EEE', 'ME', 'CE', 'CHE', 'Mining', 'AIDS', 'BCT', 'P&I', 'PE'];
 
 export default function Register() {
   const { register } = useAuth();
@@ -27,7 +27,7 @@ export default function Register() {
         <Field label="Email"><input className="input" type="email" required value={f.email} onChange={set('email')} /></Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Roll number"><input className="input" value={f.roll_no} onChange={set('roll_no')} /></Field>
-          <Field label="Branch"><select className="input" value={f.branch} onChange={set('branch')}>{BRANCHES.map(b => <option key={b}>{b}</option>)}</select></Field>
+          <Field label="Branch"><Dropdown value={f.branch} onChange={b => setF({ ...f, branch: b })} options={BRANCHES} /></Field>
         </div>
         <Field label="Password (min 6 characters)"><input className="input" type="password" minLength={6} required value={f.password} onChange={set('password')} /></Field>
         {err && <div className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">{err}</div>}
